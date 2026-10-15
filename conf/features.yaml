@@ -1,0 +1,109 @@
+# Declarative feature specification.
+#
+# This file is the single source of truth consumed by both the offline
+# evaluation and the serving path. The registry validates that every declared
+# feature has an implementation and that every implementation is declared.
+#
+# fit_on: train_only  -> statistics may only be computed on the train partition
+# fit_on: catalogue   -> known independently of any interaction (cold-start safe)
+# fit_on: none        -> computed row-locally from the row's own session, no
+#                        corpus-level fitting involved
+# point_in_time: true -> only events strictly before the cut-off (or, for
+#                        session-local features, strictly before the current
+#                        position within the session) may influence the value
+
+version: 1
+
+features:
+  - name: item_popularity_count
+    family: item
+    dtype: float32
+    transform: item_popularity_count
+    params: {}
+    fit_on: train_only
+    point_in_time: true
+    fill: {strategy: constant, value: 0.0}
+    rationale: >
+      How often an item was viewed in training sessions up to the cut-off.
+      Drives the popularity baseline and the cold-start fallback ordering for
+      items with no neighbour-session support.
+
+  - name: item_category
+    family: item
+    dtype: object
+    transform: item_category
+    params: {}
+    fit_on: catalogue
+    point_in_time: false
+    fill: {strategy: constant, value: "unknown"}
+    rationale: >
+      Catalogue attribute from the item-properties changelog. Known before any
+      interaction, so it is available for items that never appear in training
+      and can be used to break ties among equally popular candidates.
+
+  - name: visitor_prior_session_count
+    family: user
+    dtype: float32
+    transform: visitor_prior_session_count
+    params: {}
+    fit_on: train_only
+    point_in_time: true
+    fill: {strategy: constant, value: 0.0}
+    rationale: >
+      Number of training sessions a visitorid has started before the current
+      one. This is an optional, strictly ablation-only signal: visitorid is a
+      cookie, not a durable account, so the primary session-kNN method never
+      depends on it, but a returning cookie is still weak positive evidence.
+
+  - name: session_length_so_far
+    family: interaction
+    dtype: float32
+    transform: session_length_so_far
+    params: {}
+    fit_on: none
+    point_in_time: true
+    fill: {strategy: constant, value: 0.0}
+    rationale: >
+      Number of events already observed in the current session, i.e. the
+      0-indexed position itself. Short sessions get little context, which is
+      exactly the "cold session" regime broken out in the evaluation report.
+
+  - name: time_since_session_start
+    family: interaction
+    dtype: float32
+    transform: time_since_session_start
+    params: {unit_seconds: true}
+    fit_on: none
+    point_in_time: true
+    fill: {strategy: constant, value: 0.0}
+    rationale: >
+      Elapsed time between the session's first event and the *last observed*
+      event (not the event being predicted). Captures browsing pace -- a
+      visitor who has lingered for ten minutes behaves differently from one
+      three seconds into a session.
+
+  - name: hour_of_day
+    family: context
+    dtype: float32
+    transform: hour_of_day
+    params: {}
+    fit_on: none
+    point_in_time: false
+    fill: {strategy: constant, value: 0.0}
+    rationale: >
+      Hour extracted from the event being scored. Not an aggregate over
+      history, so it carries no leakage risk: the wall-clock time of the
+      prediction request is known by definition.
+
+  - name: is_weekend
+    family: context
+    dtype: float32
+    transform: is_weekend
+    params: {}
+    fit_on: none
+    point_in_time: false
+    fill: {strategy: constant, value: 0.0}
+    rationale: >
+      Weekday/weekend split of browsing behaviour, used as an ablation
+      feature alongside hour_of_day to test whether coarse temporal context
+      improves candidate re-ranking over neighbour-vote scores alone.

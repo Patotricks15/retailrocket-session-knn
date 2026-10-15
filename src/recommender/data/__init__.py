@@ -10,7 +10,7 @@ from recommender.data.loader import (
     load_events,
     load_item_properties,
 )
-from recommender.data.sessionize import sessionize, session_summary
+from recommender.data.sessionize import session_summary, sessionize
 from recommender.data.splitting import SessionSplit, temporal_session_split
 
 __all__ = [
