@@ -38,3 +38,5 @@ kaggle.json
 
 # LocalStack runtime state (contains generated TLS certs and private keys)
 .floci/
+*.egg-info/
+build/
