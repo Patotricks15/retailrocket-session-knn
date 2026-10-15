@@ -1,0 +1,70 @@
+<mxfile host="Drawpyo" modified="2026-10-15T15:31:28" agent="Python 3.12, Drawpyo 0.23" version="21.6.5" type="device">
+  <diagram name="Recommendation architecture" id="134949530310304">
+    <mxGraphModel dx="2037" dy="830" grid="1" gridSize="10" guides="1" toolTips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="134949530310256" value="Raw events&#xa;visitorid · timestamp · itemid · event" style="whiteSpace=wrap;rounded=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;dashed=0;html=1;fontSize=11;fontColor=#232F3E;align=center;verticalAlign=middle;" vertex="1" parent="1">
+  <mxGeometry x="420" y="40" width="260" height="72" as="geometry" />
+</mxCell>
+        <mxCell id="134949530310352" value="Time-gap sessionization&#xa;inactivity &gt; 30 min → new session" style="whiteSpace=wrap;rounded=1;fillColor=#FFF4E6;strokeColor=#D45B07;dashed=0;html=1;fontSize=11;fontColor=#232F3E;align=center;verticalAlign=middle;" vertex="1" parent="1">
+  <mxGeometry x="420" y="158" width="260" height="58" as="geometry" />
+</mxCell>
+        <mxCell id="134949530310928" value="Temporal session split&#xa;train / val / test by session start_ts" style="whiteSpace=wrap;rounded=1;fillColor=#FFF4E6;strokeColor=#D45B07;dashed=0;html=1;fontSize=11;fontColor=#232F3E;align=center;verticalAlign=middle;" vertex="1" parent="1">
+  <mxGeometry x="420" y="276" width="260" height="58" as="geometry" />
+</mxCell>
+        <mxCell id="134949530311504" value="Inverted item→session index&#xa;(train sessions only)" style="whiteSpace=wrap;rounded=1;fillColor=#E6FFFA;strokeColor=#277116;dashed=0;html=1;fontSize=11;fontColor=#232F3E;align=center;verticalAlign=middle;" vertex="1" parent="1">
+  <mxGeometry x="420" y="394" width="260" height="58" as="geometry" />
+</mxCell>
+        <mxCell id="134949530312080" value="Session-kNN&#xa;sim(S,N)=|S∩N|/√(|S||N|)&#xa;w(N)=e^(−λΔt)" style="whiteSpace=wrap;rounded=1;fillColor=#EEF2FF;strokeColor=#4D72F3;dashed=0;html=1;fontSize=11;fontColor=#232F3E;align=center;verticalAlign=middle;" vertex="1" parent="1">
+  <mxGeometry x="420" y="512" width="260" height="86" as="geometry" />
+</mxCell>
+        <mxCell id="134949530312656" value="Neighbour-vote scoring&#xa;s(i,S)=Σ sim·w·1[i∈N]" style="whiteSpace=wrap;rounded=1;fillColor=#EEF2FF;strokeColor=#4D72F3;dashed=0;html=1;fontSize=11;fontColor=#232F3E;align=center;verticalAlign=middle;" vertex="1" parent="1">
+  <mxGeometry x="420" y="645" width="260" height="58" as="geometry" />
+</mxCell>
+        <mxCell id="134949530313232" value="Next-item evaluation&#xa;Recall@K · MRR · Coverage&#xa;cold-session (len=1) breakdown" style="whiteSpace=wrap;rounded=1;fillColor=#FFF5F5;strokeColor=#C53030;dashed=0;html=1;fontSize=11;fontColor=#232F3E;align=center;verticalAlign=middle;" vertex="1" parent="1">
+  <mxGeometry x="420" y="778" width="260" height="86" as="geometry" />
+</mxCell>
+        <mxCell id="134949530313808" value="Point-in-time features&#xa;conf/features.yaml&#xa;session length · elapsed time ·&#xa;item popularity (strict &lt;)" style="whiteSpace=wrap;rounded=1;fillColor=#E6FFFA;strokeColor=#277116;dashed=0;html=1;fontSize=11;fontColor=#232F3E;align=center;verticalAlign=middle;" vertex="1" parent="1">
+  <mxGeometry x="90" y="388" width="250" height="86" as="geometry" />
+</mxCell>
+        <mxCell id="134949530314384" value="Baselines&#xa;Popularity · Random" style="whiteSpace=wrap;rounded=1;fillColor=#F7FAFC;strokeColor=#9AA5B1;dashed=0;html=1;fontSize=11;fontColor=#232F3E;align=center;verticalAlign=middle;" vertex="1" parent="1">
+  <mxGeometry x="90" y="798" width="250" height="58" as="geometry" />
+</mxCell>
+        <mxCell id="134949530314960" value="Request-time Lambda&#xa;+ popularity fallback (DynamoDB)" style="whiteSpace=wrap;rounded=1;fillColor=#EEF2FF;strokeColor=#4D72F3;dashed=0;html=1;fontSize=11;fontColor=#232F3E;align=center;verticalAlign=middle;" vertex="1" parent="1">
+  <mxGeometry x="750" y="526" width="250" height="58" as="geometry" />
+</mxCell>
+        <mxCell id="134949530315488" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;jettySize=auto;" edge="1" parent="1" source="134949530310256" target="134949530310352" value="">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="134949530316016" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;jettySize=auto;" edge="1" parent="1" source="134949530310352" target="134949530310928" value="">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="134949530316160" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;jettySize=auto;" edge="1" parent="1" source="134949530310928" target="134949530311504" value="train only">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="134949530316304" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;jettySize=auto;" edge="1" parent="1" source="134949530311504" target="134949530312080" value="">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="134949530316448" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;jettySize=auto;" edge="1" parent="1" source="134949530312080" target="134949530312656" value="">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="134949530316592" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;jettySize=auto;" edge="1" parent="1" source="134949530312656" target="134949530313232" value="">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="134949530316736" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;jettySize=auto;" edge="1" parent="1" source="134949530310928" target="134949530313808" value="train only">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="134949530316880" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;jettySize=auto;" edge="1" parent="1" source="134949530313808" target="134949530312080" value="context">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="134949530317024" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;jettySize=auto;" edge="1" parent="1" source="134949530314384" target="134949530313232" value="">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="134949530317168" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;jettySize=auto;" edge="1" parent="1" source="134949530312080" target="134949530314960" value="on-the-fly">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
