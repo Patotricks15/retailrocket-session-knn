@@ -1,0 +1,89 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check src tests scripts
+
+      - name: Generate the synthetic fixture
+        run: python scripts/download_data.py --synthetic
+
+      - name: Test
+        run: pytest -q
+
+      - name: Smoke-test the CLI
+        run: |
+          python -m recommender.cli train
+          python -m recommender.cli evaluate --partition validation
+          python -m recommender.cli recommend --session-id "$(python -c "
+          import sys; sys.path.insert(0, 'src')
+          from recommender.data import load_events, index_items, sessionize, temporal_session_split
+          ev = load_events('data/events.csv')
+          data = index_items(ev)
+          sess = sessionize(data.frame)
+          split = temporal_session_split(sess, data.n_items)
+          print(split.test['session_id'].iloc[0])
+          ")" --partition test --k 5
+
+      - name: Check the generated tables are up to date
+        run: |
+          python scripts/export_results_table.py
+          python scripts/export_feature_tables.py
+          git diff --exit-code paper/tables/features.tex paper/tables/feature-rationale.tex
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      - name: Format
+        run: terraform -chdir=terraform fmt -check
+
+      - name: Validate
+        run: |
+          terraform -chdir=terraform init -backend=false
+          terraform -chdir=terraform validate
+
+  paper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the technical report
+        uses: xu-cheng/latex-action@v3
+        with:
+          working_directory: paper
+          root_file: main.tex
+          latexmk_use_xelatex: false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: technical-report
+          path: paper/main.pdf

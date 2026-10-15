@@ -1,0 +1,47 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+Retailrocket's browsing log has no durable user to personalise against, and
+most sessions are too short for a sequence model to find much to condition
+on. Session-based $k$-nearest-neighbours fits that regime directly: it
+represents the current session as a set of items, retrieves similar past
+sessions from a strictly earlier, leakage-safe pool, and lets a
+similarity- and recency-weighted vote (Equations~\ref{eq:cosine}--\ref{eq:scoring})
+produce the ranking -- no embeddings, no gradient descent, no sequence model
+anywhere in the pipeline.
+
+On the held-out test partition, tuned session-kNN modestly outperforms a
+tuned popularity baseline on Recall@20 and MRR@20 while covering more than
+thirteen times as much of the catalogue, and we have been explicit about the
+one regime -- single-item ``cold'' sessions -- where popularity remains
+competitive rather than presenting an unconditionally favourable picture.
+Every point-in-time contract is enforced by a failing-by-default test, the
+split is session-level and strictly temporal, and the serving path is
+asserted to reproduce the offline ranking exactly rather than assumed to.
+
+\subsection{Limitations and future work}
+
+\begin{itemize}
+  \item \textbf{Synthetic fixture.} The headline numbers in
+        Section~\ref{sec:results} are measured on the synthetic fixture, not
+        the real Kaggle dataset, so the repository is runnable with no
+        Kaggle account. \texttt{scripts/download\_data.py --kaggle}
+        downloads the real log for anyone who wants to reproduce the result
+        against it; we expect the direction of the comparison to hold but
+        not necessarily the exact margins.
+  \item \textbf{Item side-information is underused.} \texttt{item\_category}
+        is engineered and tested but not yet blended into the scoring
+        function; a category-aware fallback could plausibly close some of
+        the cold-session gap reported in Section~\ref{sec:results}.
+  \item \textbf{A single blended serving policy.} The current serving path
+        (Section~\ref{sec:serving}) only falls back to popularity for
+        zero-item requests. Extending the blend to short-but-nonzero
+        sessions, as motivated in Section~\ref{sec:results}, is future work
+        rather than a limitation of the method itself.
+  \item \textbf{Candidate truncation.} \texttt{sample\_size} bounds the
+        neighbour search for scalability; on a catalogue many times larger
+        than this fixture's, a cheaper approximate retrieval step (e.g.
+        locality-sensitive hashing over session vectors) would likely be
+        needed to keep the per-request cost bounded without raising the
+        truncation threshold.
+\end{itemize}

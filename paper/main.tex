@@ -1,0 +1,83 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{xcolor}
+
+\geometry{margin=2.5cm}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black}
+
+\newcommand{\Sset}{S}
+\newcommand{\Nset}{N}
+\newcommand{\Iset}{\mathcal{I}}
+\newcommand{\Nhood}{\mathcal{N}}
+
+\title{\textbf{Session-Based $k$-Nearest-Neighbours for Retailrocket}\\[0.4em]
+\large A reproducible, fully classical pipeline for anonymous,
+short-lived browsing sessions\\
+with point-in-time features and an honest comparison against popularity}
+
+\author{Patrick Oliveira}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We implement session-based $k$-nearest-neighbours (session-kNN) recommendation
+for the Retailrocket e-commerce dataset, in which browsing activity is
+anonymous and ephemeral: a \texttt{visitorid} is a cookie, not a durable
+account, and most sessions contain only a handful of events. Session-kNN
+represents the current, partial session as a set of recently viewed items,
+retrieves the most similar historical sessions from a strictly earlier time
+window, and lets those neighbours vote on the next item -- no gradient
+descent, no embeddings, no sequence model. Every aggregate feature is
+computed point-in-time against a strict event-order cut-off, the
+train/validation/test split is session-level and strictly temporal so no
+session straddles a boundary, and the served ranking is asserted to equal the
+ranking that was scored offline. On the held-out test partition, tuned
+session-kNN attains Recall@20 of $0.3545$ against $0.3459$ for a tuned
+popularity baseline, with catalogue coverage of $0.930$ versus $0.068$ --
+session-kNN reaches comparable accuracy to the strongest non-personalised
+baseline while recommending from almost the whole catalogue instead of a
+narrow set of bestsellers. We also show the baseline remains competitive, and
+in the single-item ``cold session'' regime slightly ahead, which is a fair
+characterisation of the data rather than a result to be tuned away.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Notation}
+\label{sec:notation}
+
+A \emph{session} $\Sset$ is an ordered sequence of items viewed by one
+visitor with no inactivity gap larger than $30$ minutes between consecutive
+events (Section~\ref{sec:data}). We write $\Sset$ interchangeably for the
+sequence and, when only set membership matters, for the set of its items.
+$\Iset$ is the full item catalogue. At prediction time a \emph{query session}
+is a strict prefix of a session, and the task is to rank $\Iset$ so that the
+item that actually comes next is ranked as high as possible. $\Nhood(\Sset)$
+denotes the $k$ nearest neighbour sessions of a query $\Sset$, drawn from a
+pool of historical, completed sessions. $\Delta t$ denotes elapsed time
+between two session start times, and $\lambda$ a decay rate.
+
+\input{sections/01-introduction}
+\input{sections/02-data}
+\input{sections/03-feature-engineering}
+\input{sections/04-methodology}
+\input{sections/05-evaluation}
+\input{sections/06-results}
+\input{sections/07-conclusion}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

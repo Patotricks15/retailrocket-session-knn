@@ -1,0 +1,105 @@
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Session representation}
+
+A query session $\Sset$ (the prefix observed so far) is represented purely as
+a \emph{set} of item identifiers, discarding order within the session. This
+is a deliberate simplification: order and timing are reintroduced elsewhere
+(the session-local features of Section~\ref{sec:features}, and the recency
+weight of neighbour \emph{sessions} below), but the core retrieval step
+compares sessions on co-occurrence alone, which is what makes it classical
+set arithmetic rather than a sequence model.
+
+\subsection{Similarity}
+
+Two sessions are compared with cosine similarity over their binary item
+indicator vectors, which is equivalent to normalizing the raw intersection
+size by the geometric mean of the two session sizes:
+
+\begin{equation}
+  \operatorname{sim}(\Sset, \Nset) = \frac{|\Sset \cap \Nset|}{\sqrt{|\Sset|\,|\Nset|}} .
+  \label{eq:cosine}
+\end{equation}
+
+This is the primary similarity used throughout the report. As an ablation
+(Section~\ref{sec:results}) we also evaluate Jaccard similarity, which
+normalizes by the union instead of the geometric mean and therefore penalizes
+a large symmetric-difference more aggressively:
+
+\begin{equation}
+  \operatorname{sim}(\Sset, \Nset) = \frac{|\Sset \cap \Nset|}{|\Sset \cup \Nset|} .
+  \label{eq:jaccard}
+\end{equation}
+
+Both are $0$ whenever the sessions share no item and $1$ when they are
+identical; cosine is less sensitive to a large size mismatch between $\Sset$
+and $\Nset$, which matters here because sessions range from one to a few
+dozen events.
+
+\subsection{Candidate retrieval}
+
+Scoring every training session against every query would cost
+$O(|\text{train sessions}|)$ per request. Instead, an inverted index maps
+each item to the training sessions that contain it, and the candidate pool
+for a query $\Sset$ is the union of sessions indexed by any item in $\Sset$ --
+any session with zero overlap has $\operatorname{sim} = 0$ by
+Equations~\ref{eq:cosine}--\ref{eq:jaccard} and can be skipped entirely. A
+configurable cap retains only the \texttt{sample\_size} most recent candidates
+by session start time, bounding per-request cost as the training log grows.
+
+\subsection{Recency weighting}
+
+Older sessions are discounted exponentially by the elapsed time between the
+query session's start and the neighbour session's start, $\Delta t$ (measured
+in hours):
+
+\begin{equation}
+  w(\Nset) = e^{-\lambda \Delta t} .
+  \label{eq:decay}
+\end{equation}
+
+$\lambda = 0$ disables decay (a pure similarity vote); larger $\lambda$
+discounts stale sessions faster. Section~\ref{sec:results} reports that, on
+this dataset, the tuned configuration sets $\lambda = 0$ -- recency decay is
+implemented and ablated, but does not improve on this particular fixture,
+which we report rather than silently dropping the feature.
+
+\subsection{Neighbour selection and scoring}
+
+The $k$ nearest neighbour sessions, $\Nhood(\Sset)$, are the $k$ candidates
+with the highest $\operatorname{sim}(\Sset, \cdot)$ (ties broken by recency).
+Every candidate item is then scored by summing the similarity- and
+recency-weighted votes of the neighbours that contain it:
+
+\begin{equation}
+  s(i, \Sset) = \sum_{\Nset \in \Nhood(\Sset)} \operatorname{sim}(\Sset, \Nset)\, w(\Nset)\, \mathbb{1}[\, i \in \Nset \,] .
+  \label{eq:scoring}
+\end{equation}
+
+Items already present in the query session are excluded from the candidate
+set before ranking, so the model is never evaluated on "recommending" what
+the visitor has already just viewed. There is no parameter being learned by
+gradient descent anywhere in Equations~\ref{eq:cosine}--\ref{eq:scoring}: the
+entire method is counting, set membership, and a partial sort over at most
+$k \times |\Iset|$ score contributions.
+
+\subsection{Session-segmentation rule (restated)}
+
+The unit this method operates over is itself defined classically
+(Equation~\ref{eq:sessionization}): a session is the maximal run of a
+visitor's events with no inter-event gap exceeding $30$ minutes. Session-kNN
+is only as good as this boundary; too short a threshold fragments genuine
+single sessions, too long merges unrelated visits and dilutes the
+within-session signal the method relies on.
+
+\subsection{Baselines}
+
+\paragraph{Popularity.} Ranks every candidate by global training-time view
+count, ignoring the query session entirely. It is the floor that justifies
+retrieving neighbours at all, and -- as Section~\ref{sec:results} shows -- a
+genuinely competitive floor on this dataset, not a strawman.
+
+\paragraph{Random.} A seeded permutation per query. It calibrates the metric
+scale and, with full catalogue coverage by construction, demonstrates that
+coverage alone is not evidence of quality.

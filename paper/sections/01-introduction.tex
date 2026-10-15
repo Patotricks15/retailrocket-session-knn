@@ -1,0 +1,64 @@
+\section{Introduction}
+\label{sec:introduction}
+
+Session-based recommendation differs from classical collaborative filtering
+in a way that is easy to state and easy to build the wrong system around:
+there is no stable, long-lived user. Retailrocket's \texttt{visitorid} is a
+browser cookie -- it can be cleared, shared across devices, or reassigned,
+and the typical session contains only a handful of events before the visitor
+leaves. A model that spends its capacity learning a per-user profile is
+solving a problem that barely exists in this data; the signal that does
+exist is almost entirely in \emph{what the visitor has just looked at}.
+
+Session-based $k$-nearest-neighbours (session-kNN) takes that observation
+literally. The current, partial session is represented as a set of recently
+viewed items. At prediction time, the $k$ most similar \emph{past} sessions
+are retrieved, and candidate items are scored by a similarity- and
+recency-weighted vote from those neighbours (Section~\ref{sec:methodology}).
+Jannach and Ludewig~\cite{jannach2017knn} and Ludewig and
+Jannach~\cite{ludewig2018evaluation} show this kind of neighbourhood method is
+a consistently strong, often underrated baseline against recurrent neural
+session models such as GRU4Rec~\cite{hidasi2016gru4rec} -- a session-specific
+echo of the broader finding that tuned classical baselines frequently match
+or beat untuned neural recommenders~\cite{dacrema2019}. This project is
+deliberately scoped to the classical side of that comparison: no neural
+network appears anywhere in the pipeline.
+
+\subsection{Scope and claims}
+
+This report accompanies a working repository rather than a novel method. The
+claims we make are:
+
+\begin{enumerate}
+  \item The pipeline is leakage-free. Session-derived aggregates (session
+        length so far, elapsed time, item popularity) are computed
+        point-in-time, enforced by tests that inject a future event and
+        assert no earlier feature value changes
+        (Section~\ref{sec:features}).
+  \item The split is session-level and strictly temporal. No session's
+        events are split across train and evaluation, and neighbour sessions
+        for $k$NN are drawn only from the training partition, which
+        chronologically precedes every evaluated session
+        (Section~\ref{sec:evaluation}).
+  \item The reported numbers are honest. Hyperparameters for every model,
+        baseline included, were selected on a validation partition; the test
+        partition was read once (Section~\ref{sec:evaluation}).
+  \item The served ranking equals the evaluated ranking. Session-kNN scores
+        on-the-fly in both the evaluation harness and the Lambda handler, and
+        a parity test asserts the two agree exactly given the same query
+        session and timestamp.
+\end{enumerate}
+
+We do \emph{not} claim session-kNN dominates every slice of the evaluation.
+Section~\ref{sec:results} shows the popularity baseline is slightly ahead of
+it in the hardest, single-item ``cold session'' regime, and we report that
+rather than tuning it away.
+
+\subsection{Repository}
+
+The implementation, infrastructure, and the scripts that generate every table
+in this document are available in the accompanying repository. The results
+table (Table~\ref{tab:results}) is emitted by
+\texttt{scripts/export\_results\_table.py} and the feature catalogue
+(Table~\ref{tab:features}) by \texttt{scripts/export\_feature\_tables.py},
+so the document cannot drift away from the code.

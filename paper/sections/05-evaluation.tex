@@ -1,0 +1,74 @@
+\section{Evaluation Protocol}
+\label{sec:evaluation}
+
+\subsection{Temporal, session-level split}
+
+Sessions are ordered by start time and partitioned by position in that
+ordering into train ($70\%$), validation ($15\%$) and test ($15\%$). Every
+event belonging to a session is assigned to that session's partition, so no
+session is ever split across the boundary -- the unsafe alternative, a
+row-level split, would let a model's feature-fitting step observe part of a
+session it is later evaluated on. Validation and test sessions shorter than
+two events are excluded from evaluation entirely (they contribute no
+next-item target), but remain available in train for fitting corpus
+aggregates.
+
+Session-kNN's neighbour pool is restricted, by construction of this split, to
+training sessions only (Section~\ref{sec:methodology}). Because every
+training session's start time precedes every validation/test session's start
+time, this also means every neighbour a query session can retrieve
+chronologically precedes it -- there is no scenario in which a session
+"recommends itself" or borrows structure from a session evaluated alongside
+it.
+
+\subsection{Next-item-in-session protocol}
+
+For every session in the evaluated partition, the protocol walks every
+prefix length $p = 1, \dots, |\Sset| - 1$: the first $p$ items become the
+query session, the item at position $p$ is the held-out target, and the
+items already seen are excluded from the candidate set. A session of length
+$L$ contributes $L - 1$ evaluated positions; length-$1$ sessions contribute
+none, since they carry no next item.
+
+\textbf{Recall@K} is the fraction of evaluated positions where the held-out
+target appears anywhere in the top-$K$ list. Because exactly one item is
+relevant per position, Recall@K here is equivalent to hit rate.
+
+\textbf{MRR} is the mean reciprocal rank of the target when it appears in the
+top-$K$ list (and $0$ when it does not), rewarding the method for ranking the
+correct item \emph{near the top}, not merely somewhere in the list.
+
+\textbf{Coverage} is the fraction of the catalogue that appears in at least
+one top-$K$ list across the whole evaluation, measuring whether a method
+recommends from a broad slice of the catalogue or collapses onto a narrow
+set of items -- the latter is invisible to Recall@K and MRR alone.
+
+\subsection{Cold-session breakdown}
+
+Positions with $p = 1$ -- exactly one observed item -- are also reported
+separately. This is the hardest and, for Retailrocket, the most common
+regime: short, anonymous sessions provide almost no context before the first
+recommendation is due. Reporting it separately from the aggregate prevents a
+method that only wins on longer, easier prefixes from looking uniformly
+better than it is.
+
+\subsection{Hyperparameter selection}
+
+Every hyperparameter -- session-kNN's $k$, \texttt{sample\_size},
+$\lambda$ and similarity metric -- was selected by grid search on the
+\emph{validation} partition (\texttt{scripts/export\_results\_table.py} reads
+the test partition only after selection, and only once). The baselines have
+no hyperparameters to tune beyond the shared evaluation cut-off $K$.
+
+\subsection{Training/serving parity}
+\label{sec:serving}
+
+Because session-kNN scores on-the-fly rather than from a precomputed
+per-entity table (Section~\ref{sec:serving}), the parity risk is different
+from a matrix-factorization project: it is not "did we serve a stale
+precomputed list" but "does the request-time Lambda reproduce the exact
+ranking the offline harness scored for the same query session and
+timestamp". A dedicated test constructs a query session, calls
+\texttt{model.recommend} directly, and separately invokes the Lambda handler
+with the same items and an explicit \texttt{query\_start\_ts}, and asserts
+the two rankings are identical.

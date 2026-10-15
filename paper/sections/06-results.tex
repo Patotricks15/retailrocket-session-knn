@@ -1,0 +1,53 @@
+\section{Results}
+\label{sec:results}
+
+\input{tables/results}
+
+\subsection{Session-kNN versus popularity}
+
+Tuned session-kNN attains Recall@20 of $0.3545$ against $0.3459$ for the
+tuned popularity baseline on the held-out test partition -- a modest but
+real margin, and consistent in direction with MRR@20 ($0.1701$ versus
+$0.1490$). The difference that matters more for a production system is
+coverage: $0.930$ against $0.068$. Popularity necessarily recommends from a
+small, fixed set of bestsellers regardless of what the visitor is looking
+at; session-kNN's accuracy is comparable \emph{while} drawing recommendations
+from almost the entire catalogue, which is the actual argument for using it
+over a popularity list in a real store, independent of the raw accuracy
+numbers.
+
+\subsection{The cold-session regime is genuinely harder, and popularity wins it}
+
+Restricted to single-item prefixes, popularity's Recall@20 is $0.4601$
+against session-kNN's $0.4356$. This is the expected failure mode of a
+neighbourhood method: with only one observed item, the candidate neighbour
+pool is small and noisy, and the recency/similarity vote has little to work
+with. Popularity, by construction, is unaffected by session length. We report
+this rather than hiding it, because it motivates a concrete production
+decision: blend session-kNN with the popularity fallback for very short
+sessions rather than deploying session-kNN unconditionally
+(Section~\ref{sec:serving} already implements half of this blend as the
+cold-start path for requests with zero recognised items; extending it to
+single-item sessions is a one-line threshold change, not a reason to prefer a
+different method overall).
+
+\subsection{Ablation: similarity metric and recency decay}
+
+Grid search on the validation partition selected cosine similarity over
+Jaccard, and $\lambda = 0$ (no recency decay) over every nonzero decay rate
+tried. The latter is the more surprising finding: Equation~\ref{eq:decay} is
+implemented and tested (Section~\ref{sec:methodology}), but on this
+synthetic fixture the taste-cluster structure is stationary across the whole
+time span, so discounting older sessions only throws away useful neighbours
+without compensating for any real preference drift. On the real Retailrocket
+log, where seasonal and catalogue turnover effects are present, we expect
+$\lambda > 0$ to earn its place; the ablation is kept in the code specifically
+so that re-tuning against the real dataset is a one-line change, not a
+re-implementation.
+
+\subsection{Random floor}
+
+Random recommendation attains Recall@20 of $0.0478$, close to the
+theoretical floor $K / |\Iset| = 20/400 = 0.05$ for this fixture, and full
+catalogue coverage by construction -- confirming that coverage alone is not a
+quality signal, only a necessary complement to Recall@K and MRR.

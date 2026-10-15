@@ -93,7 +93,9 @@ def build_aws_architecture() -> None:
 
     kaggle = box(page, "Retailrocket events\n(views · carts · purchases)", 30, 100, 210, 58)
     raw = aws_node(page, "S3\nraw", "bucket", GREEN, 310, 90)
-    reindex = aws_node(page, "ECS Fargate\nsessionize + index", "machine_learning", ORANGE, 310, 260)
+    reindex = aws_node(
+        page, "ECS Fargate\nsessionize + index", "machine_learning", ORANGE, 310, 260
+    )
     schedule = aws_node(page, "EventBridge\nnightly 03:00", "event_time_based", PURPLE, 90, 260)
     artifacts = aws_node(page, "S3\nsession index (.pkl)", "bucket", GREEN, 310, 430)
     fallback = aws_node(page, "DynamoDB\npopularity fallback", "dynamodb", BLUE, 610, 430)
@@ -164,7 +166,8 @@ def build_recommendation_architecture() -> None:
 
     features = box(
         page,
-        "Point-in-time features\nconf/features.yaml\nsession length · elapsed time ·\nitem popularity (strict <)",
+        "Point-in-time features\nconf/features.yaml\nsession length · elapsed time ·\n"
+        "item popularity (strict <)",
         spine_x - 330, 40 + 3 * gap - 6, 250, 86, fill="E6FFFA", stroke="277116",
     )
     baselines = box(

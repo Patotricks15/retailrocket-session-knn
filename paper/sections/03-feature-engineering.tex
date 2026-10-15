@@ -1,0 +1,59 @@
+\section{Feature Engineering}
+\label{sec:features}
+
+Every feature consumed by the model or reported in this document is declared
+in \texttt{conf/features.yaml} and implemented in exactly one of four modules
+(Table~\ref{tab:features}), generated directly from that file by
+\texttt{scripts/export\_feature\_tables.py}.
+
+\subsection{Point-in-time contracts}
+
+Two distinct guarantees are needed, because the features fall into two
+different classes.
+
+\textbf{Corpus aggregates} (\texttt{item\_popularity\_count},
+\texttt{visitor\_prior\_session\_count}) are fitted once on the training
+partition and accept an explicit \texttt{cutoff\_order} argument so a strict
+\texttt{<} comparison against a global event-order index can be asserted
+directly: an event with \texttt{event\_order} $\geq$ the cut-off must not
+change the value, and an event exactly \emph{at} the cut-off belongs to the
+future, not the past.
+
+\textbf{Session-local features}
+(\texttt{session\_length\_so\_far}, \texttt{time\_since\_session\_start}) have
+no corpus-level fit at all: they are computed per event row from only the
+\emph{other} events in the same session that occurred strictly before it.
+\texttt{time\_since\_session\_start} in particular reads the timestamp of the
+most recently \emph{observed} event, not the timestamp of the row being
+scored -- the latter is the quantity the model is trying to predict alongside
+the next item, and using it would be the single most tempting leak in this
+codebase.
+
+\textbf{Context features} (\texttt{hour\_of\_day}, \texttt{is\_weekend}) are
+deterministic functions of the event being scored and are declared
+\texttt{point\_in\_time: false}: they carry no leakage risk because the
+wall-clock time of a prediction request is known by definition, unlike the
+item that will actually be clicked.
+
+\subsection{Catalogue features}
+
+\texttt{item\_category} is read directly from the item-properties changelog,
+independent of any interaction history, so cold-start items -- never seen in
+training -- still carry a category and are not excluded from candidate
+scoring.
+
+\subsection{An explicitly ablation-only visitor feature}
+
+\texttt{visitor\_prior\_session\_count} counts how many training sessions a
+\texttt{visitorid} started before the current one. The primary session-kNN
+method never conditions on it: the whole premise of this project is that
+anonymous, short-lived sessions can be modelled without a persistent
+identity. The feature exists so that premise is testable (does a returning
+cookie help at all?) instead of merely asserted; Section~\ref{sec:results}
+reports the answer.
+
+\input{tables/features}
+
+\subsection{Rationale}
+
+\input{tables/feature-rationale}
